@@ -166,7 +166,7 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
       </div>
 
       <header className="sticky top-0 z-40 w-full bg-white text-gray-900 shadow-sm">
-          <div className="mx-auto flex h-16 max-w-[1880px] items-center justify-between gap-3 px-4 lg:h-[68px] lg:gap-6">
+          <div className="mx-auto flex h-16 max-w-[1880px] items-center justify-between gap-3 px-4 lg:h-17 lg:gap-6">
           <Link href="/" aria-label="FreshCart home" className="group flex shrink-0 items-center">
             <Image
               src={freshCartLogo}
@@ -174,7 +174,7 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
               priority
               width={145}
               height={30}
-              className="h-auto w-[128px] sm:w-[145px]"
+              className="h-auto w-32 sm:w-36.25"
             />
           </Link>
 
@@ -285,7 +285,7 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
         >
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <Link href="/" onClick={closeMenu} aria-label="FreshCart home" className="flex items-center">
-              <Image src={freshCartLogo} alt="FreshCart" width={135} height={28} className="h-auto w-[135px]" />
+              <Image src={freshCartLogo} alt="FreshCart" width={135} height={28} className="h-auto w-33.75" />
             </Link>
             <button type="button" aria-label="Close navigation menu" onClick={closeMenu} className="flex size-9 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a]">
               <RiCloseLine aria-hidden="true" className="size-5" />
