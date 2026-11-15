@@ -5,7 +5,7 @@ export default function BrandsPage() {
   return (
     <main className="flex-1 bg-[#f8f9fc]">
       <section className="relative overflow-hidden bg-linear-to-r from-violet-600 via-violet-500 to-fuchsia-400">
-        <div aria-hidden="true" className="absolute -right-16 -top-32 size-96 rounded-full border-[48px] border-white/10" />
+        <div aria-hidden="true" className="absolute -right-16 -top-32 size-96 rounded-full border-48 border-white/10" />
         <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
           <p className="text-sm font-semibold text-white/75">Home <span className="mx-2">/</span> Brands</p>
           <div className="mt-8 flex items-center gap-5">
