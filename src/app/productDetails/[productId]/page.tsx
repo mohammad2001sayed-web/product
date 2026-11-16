@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getProducts } from "@/src/app/(home)/home.service";
+import { getProductsPage } from "@/src/app/(home)/home.service";
 import { getProductDetails } from "../productDetails.services";
 import { getWishlist } from "@/src/app/wishlist/wishlist.api";
 import { ProductDetails } from "@/src/components/ProductDetails/ProductDetails";
@@ -43,7 +43,7 @@ async function ProductDetailsContent({ params }: ProductDetailsPageProps) {
     throw error;
   }
 
-  const products = await getProducts().catch(() => []);
+  const products = await getProductsPage(1).then((result) => result.data).catch(() => []);
   const recommendations = products
     .filter((item) => (item.id || item._id) !== (product.id || product._id))
     .slice(0, 5);

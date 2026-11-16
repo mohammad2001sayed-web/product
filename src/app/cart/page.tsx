@@ -1,5 +1,5 @@
-﻿import { Suspense } from "react";
-import { cookies } from "next/headers";
+import { Suspense } from "react";
+import { getAuthToken } from "@/src/next-Auth/getAuthToken";
 import { getCart } from "./cart.api";
 import type { cartResponse } from "./cart.interface";
 import { CartView } from "@/src/components/CartView/CartView";
@@ -9,7 +9,7 @@ export default function CartPage() {
 }
 
 async function CartContent() {
-  const token = (await cookies()).get("token")?.value;
+  const token = await getAuthToken();
   let cart: cartResponse | null = null;
   let loadError = false;
   if (token) {

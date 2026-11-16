@@ -1,7 +1,7 @@
-﻿import { Suspense } from "react";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { getAuthToken } from "@/src/next-Auth/getAuthToken";
 import { RiArrowLeftLine, RiHeartLine } from "@remixicon/react";
 import { getWishlist } from "./wishlist.api";
 import type { Product } from "@/src/app/(home)/home.interface";
@@ -16,8 +16,7 @@ export default function WishlistPage() {
 }
 
 async function WishlistContent() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
+  const token = await getAuthToken();
   let products: Product[] = [];
   let loadError = false;
 

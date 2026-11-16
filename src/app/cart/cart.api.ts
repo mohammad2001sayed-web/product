@@ -1,10 +1,10 @@
-﻿import { cookies } from "next/headers";
+import { getAuthToken } from "@/src/next-Auth/getAuthToken";
 import type { cartResponse } from "./cart.interface";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL?.trim() || "https://ecommerce.routemisr.com";
 
 async function cartRequest(path: string, method: "GET" | "POST" | "PUT" | "DELETE", body?: object): Promise<cartResponse> {
-  const token = (await cookies()).get("token")?.value;
+  const token = await getAuthToken();
   if (!token) throw new Error("Please sign in to access your cart.");
 
   let response: Response;

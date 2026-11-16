@@ -1,6 +1,5 @@
 ﻿"use server";
 
-import { revalidatePath } from "next/cache";
 import { getWishlist, postWishlist, deleteWishlist } from "./wishlist.api";
 
 export async function setWishlistItem(productId: string, shouldBeSaved: boolean): Promise<number> {
@@ -10,6 +9,5 @@ export async function setWishlistItem(productId: string, shouldBeSaved: boolean)
 
   const wishlist = await getWishlist();
   const count = wishlist.count ?? wishlist.data?.length ?? 0;
-  revalidatePath("/", "layout");
   return count;
 }

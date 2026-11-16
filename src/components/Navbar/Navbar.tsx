@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import freshCartLogo from "../../assets/imgi_1_freshcart-logo.49f1b44d.png";
 import { logout } from "@/src/app/account/logout.actions";
+import { announceNavbarState, NAVBAR_STATE_CHANGE, type NavbarSnapshot } from "./NavbarEvents";
 import {
   RiArrowDownSLine,
   RiCloseLine,
@@ -43,31 +45,39 @@ const mobileActionLinks = [
 type NavbarProps = { userName?: string; wishlistCount?: number; cartCount?: number; isAuthenticated?: boolean };
 
 export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0, cartCount: initialCartCount = 0, isAuthenticated = Boolean(userName) }: NavbarProps = {}) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [wishlistCount, setWishlistCount] = useState(initialWishlistCount);
-  const [cartCount, setCartCount] = useState(initialCartCount);
+  const [navbarState, setNavbarState] = useState<NavbarSnapshot>({
+    userName,
+    isAuthenticated,
+    wishlistCount: initialWishlistCount,
+    cartCount: initialCartCount,
+  });
+  const { userName: currentUserName, isAuthenticated: currentIsAuthenticated, wishlistCount, cartCount } = navbarState;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    setWishlistCount(initialWishlistCount);
+    function handleNavbarStateChange(event: Event) {
+      setNavbarState((event as CustomEvent<NavbarSnapshot>).detail);
+    }
     function handleWishlistCount(event: Event) {
       const count = (event as CustomEvent<number>).detail;
-      if (typeof count === "number") setWishlistCount(count);
+      if (typeof count === "number") setNavbarState((state) => ({ ...state, wishlistCount: count }));
     }
     window.addEventListener("wishlist-count-change", handleWishlistCount);
-    return () => window.removeEventListener("wishlist-count-change", handleWishlistCount);
-  }, [initialWishlistCount]);
-
-  useEffect(() => {
-    setCartCount(initialCartCount);
     function handleCartCount(event: Event) {
       const count = (event as CustomEvent<number>).detail;
-      if (typeof count === "number") setCartCount(count);
+      if (typeof count === "number") setNavbarState((state) => ({ ...state, cartCount: count }));
     }
+    window.addEventListener(NAVBAR_STATE_CHANGE, handleNavbarStateChange);
     window.addEventListener("cart-count-change", handleCartCount);
-    return () => window.removeEventListener("cart-count-change", handleCartCount);
-  }, [initialCartCount]);
+    return () => {
+      window.removeEventListener(NAVBAR_STATE_CHANGE, handleNavbarStateChange);
+      window.removeEventListener("wishlist-count-change", handleWishlistCount);
+      window.removeEventListener("cart-count-change", handleCartCount);
+    };
+  }, []);
   useEffect(() => {
     if (!menuOpen) return;
 
@@ -129,6 +139,13 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
     setCategoriesOpen(false);
   }
 
+  async function handleLogout() {
+    await logout();
+    announceNavbarState({ userName: "", isAuthenticated: false, wishlistCount: 0, cartCount: 0 });
+    closeMenu();
+    router.replace("/");
+  }
+
   return (
     <>
       <div className="hidden border-b border-gray-100 bg-gray-50/80 text-xs text-gray-600 lg:block">
@@ -153,8 +170,8 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
               support@freshcart.com
             </a>
             <span aria-hidden="true" className="h-4 w-px bg-gray-200" />
-            {isAuthenticated ? (
-              <span className="font-medium text-slate-700">Hello, {userName || "there"}</span>
+            {currentIsAuthenticated ? (
+              <span className="font-medium text-slate-700">Hello, {currentUserName || "there"}</span>
             ) : (
               <>
                 <Link className="transition-colors hover:text-[#16a34a]" href="/account">Sign In</Link>
@@ -247,10 +264,8 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
               <RiShoppingCartLine aria-hidden="true" className="size-5 text-gray-600 group-hover:text-[#16a34a]" />
               {cartCount > 0 ? <span aria-label={`${cartCount} ${cartCount === 1 ? "item" : "items"}`} className="absolute -right-0.5 -top-0.5 flex min-w-5 items-center justify-center rounded-full bg-[#16a34a] px-1 text-[10px] font-bold leading-5 text-white">{cartCount}</span> : null}
             </Link>
-            {isAuthenticated ? (
-              <form action={logout} className="ml-2 hidden lg:block">
-                <button type="submit" className="rounded-full bg-[#16a34a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2">Logout</button>
-              </form>
+            {currentIsAuthenticated ? (
+              <button type="button" onClick={() => void handleLogout()} className="ml-2 hidden rounded-full bg-[#16a34a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2 lg:block">Logout</button>
             ) : (
               <Link href="/account" aria-label="Sign in" className="ml-2 hidden items-center gap-2 rounded-full bg-[#16a34a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2 lg:flex">
                 <RiUserLine aria-hidden="true" className="size-4" /> Sign In
@@ -325,10 +340,10 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
           </nav>
 
           <div className="mt-auto p-4">
-            {isAuthenticated ? (
+            {currentIsAuthenticated ? (
               <div className="space-y-3">
-                <p className="px-2 text-sm font-semibold text-slate-700">Hello, {userName || "there"}</p>
-                <form action={logout}><button type="submit" onClick={closeMenu} className="flex min-h-11 w-full items-center justify-center rounded-full bg-[#16a34a] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2">Logout</button></form>
+                <p className="px-2 text-sm font-semibold text-slate-700">Hello, {currentUserName || "there"}</p>
+                <button type="button" onClick={() => void handleLogout()} className="flex min-h-11 w-full items-center justify-center rounded-full bg-[#16a34a] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2">Logout</button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">

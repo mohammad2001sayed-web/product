@@ -1,6 +1,7 @@
 import { io } from "next/cache";
-import { cookies } from "next/headers";
-import { getProducts, getProductsByBrand } from "@/src/app/(home)/home.service";
+import Link from "next/link";
+import { getAuthToken } from "@/src/next-Auth/getAuthToken";
+import { getProductsByBrand, getProductsPage } from "@/src/app/(home)/home.service";
 import { getWishlist } from "@/src/app/wishlist/wishlist.api";
 import type { Product } from "@/src/app/(home)/home.interface";
 import { FeaturedProducts } from "@/src/components/FeaturedProducts/FeaturedProducts";
@@ -8,22 +9,37 @@ import { FeaturedProducts } from "@/src/components/FeaturedProducts/FeaturedProd
 type ProductCatalogProps = {
   title?: string;
   brandId?: string;
+  page?: number;
+  preview?: boolean;
 };
 
-export async function ProductCatalog({ title, brandId }: ProductCatalogProps) {
+export async function ProductCatalog({ title, brandId, page = 1, preview = false }: ProductCatalogProps) {
   await io();
 
-  const resolvedTitle = title ?? (brandId ? "Brand Products" : "All Products");
+  const resolvedTitle = title ?? (brandId ? "Brand Products" : preview ? "Popular Products" : "All Products");
   let products: Product[] | null = null;
   let favoriteIds: string[] = [];
+  let currentPage = page;
+  let pageCount = 1;
 
   try {
-    products = brandId ? await getProductsByBrand(brandId) : await getProducts();
+    if (brandId) {
+      products = await getProductsByBrand(brandId);
+    } else {
+      const result = await getProductsPage(page);
+      products = result.data;
+      pageCount = Math.max(1, result.metadata?.numberOfPages ?? 1);
+
+      if (page > pageCount) {
+        currentPage = pageCount;
+        products = (await getProductsPage(pageCount)).data;
+      }
+    }
   } catch (error) {
     console.error("Unable to load products from the API.", error);
   }
 
-  if ((await cookies()).has("token")) {
+  if (await getAuthToken()) {
     try {
       const wishlist = await getWishlist();
       favoriteIds = (wishlist.data ?? []).map((product) => product.id || product._id);
@@ -44,16 +60,45 @@ export async function ProductCatalog({ title, brandId }: ProductCatalogProps) {
   }
 
   return (
-    <FeaturedProducts
-      products={products}
-      favoriteIds={favoriteIds}
-      title={resolvedTitle}
-      description={
-        brandId
-          ? `Explore ${products.length} ${products.length === 1 ? "product" : "products"} from this brand.`
-          : `Browse all ${products.length} products in the FreshCart catalog.`
-      }
-    />
+    <>
+      <FeaturedProducts
+        products={products}
+        favoriteIds={favoriteIds}
+        title={resolvedTitle}
+        description={
+          brandId
+            ? `Explore ${products.length} ${products.length === 1 ? "product" : "products"} from this brand.`
+            : preview
+              ? "A quick selection from the FreshCart catalog."
+              : `Page ${currentPage} of ${pageCount} in the FreshCart catalog.`
+        }
+      />
+      {preview ? (
+        <div className="mx-auto -mt-7 w-full max-w-360 px-4 pb-10 text-center sm:px-6 lg:px-8">
+          <Link href="/shop" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#16a34a] px-6 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2">
+            View all products
+          </Link>
+        </div>
+      ) : !brandId && pageCount > 1 ? (
+        <nav aria-label="Product pages" className="mx-auto flex w-full max-w-360 items-center justify-center gap-5 px-4 pb-12 sm:px-6 lg:px-8">
+          {currentPage > 1 ? (
+            <Link href={`/shop?page=${currentPage - 1}`} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#16a34a] hover:text-[#15803d]">
+              Previous
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="rounded-lg border border-slate-100 px-4 py-2 text-sm text-slate-400">Previous</span>
+          )}
+          <span className="text-sm text-slate-600">Page {currentPage} of {pageCount}</span>
+          {currentPage < pageCount ? (
+            <Link href={`/shop?page=${currentPage + 1}`} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#16a34a] hover:text-[#15803d]">
+              Next
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="rounded-lg border border-slate-100 px-4 py-2 text-sm text-slate-400">Next</span>
+          )}
+        </nav>
+      ) : null}
+    </>
   );
 }
 

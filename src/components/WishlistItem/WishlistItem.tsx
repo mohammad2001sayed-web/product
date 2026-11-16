@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { RiDeleteBinLine, RiShoppingCartLine } from "@remixicon/react";
 import { setWishlistItem } from "@/src/app/wishlist/wishlist.actions";
 import { addProductToCart } from "@/src/app/cart/cart.actions";
@@ -11,8 +10,8 @@ import type { Product } from "@/src/app/(home)/home.interface";
 import { getTotalCartQuantity } from "@/src/app/cart/cart.interface";
 
 export function WishlistItem({ product }: { product: Product }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [removed, setRemoved] = useState(false);
   const [error, setError] = useState("");
   const [cartPending, setCartPending] = useState(false);
   const productId = product.id || product._id;
@@ -27,12 +26,14 @@ export function WishlistItem({ product }: { product: Product }) {
     try {
       const count = await setWishlistItem(productId, false);
       window.dispatchEvent(new CustomEvent("wishlist-count-change", { detail: count }));
-      router.refresh();
+      setRemoved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to remove this product.");
       setPending(false);
     }
   }
+
+  if (removed) return null;
 
   return (
     <article className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 border-b border-slate-100 p-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_120px_120px_auto] sm:gap-5 sm:px-6 sm:py-5">

@@ -1,10 +1,14 @@
 import type { AllProductsResponse, Product } from "./home.interface";
+import { cacheLife } from "next/cache";
 
-async function getProductsPage(baseUrl: string, page: number): Promise<AllProductsResponse> {
+async function fetchProductsPage(baseUrl: string, page: number): Promise<AllProductsResponse> {
+  "use cache";
+  cacheLife("minutes");
+
   const url = new URL("/api/v1/products", baseUrl);
   url.searchParams.set("page", String(page));
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Loading products failed (${response.status} ${response.statusText}).`);
   }
@@ -12,29 +16,23 @@ async function getProductsPage(baseUrl: string, page: number): Promise<AllProduc
   return response.json() as Promise<AllProductsResponse>;
 }
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProductsPage(page = 1): Promise<AllProductsResponse> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.trim();
   if (!baseUrl) {
     throw new Error("NEXT_PUBLIC_BASE_URL is not configured.");
   }
 
-  const firstPage = await getProductsPage(baseUrl, 1);
-  if (!Array.isArray(firstPage.data)) {
+  const result = await fetchProductsPage(baseUrl, page);
+  if (!Array.isArray(result.data)) {
     throw new Error("The products API returned an invalid response.");
   }
-
-  const totalPages = Math.max(1, firstPage.metadata?.numberOfPages ?? 1);
-  const remainingPages = await Promise.all(
-    Array.from({ length: totalPages - 1 }, (_, index) =>
-      getProductsPage(baseUrl, index + 2),
-    ),
-  );
-
-  const allProducts = [firstPage, ...remainingPages].flatMap((page) => page.data);
-  return Array.from(new Map(allProducts.map((product) => [product.id || product._id, product])).values());
+  return result;
 }
 
 export async function getProductsByBrand(brandId: string): Promise<Product[]> {
+  "use cache";
+  cacheLife("minutes");
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.trim();
   if (!baseUrl) {
     throw new Error("NEXT_PUBLIC_BASE_URL is not configured.");
@@ -43,7 +41,7 @@ export async function getProductsByBrand(brandId: string): Promise<Product[]> {
   const url = new URL("/api/v1/products", baseUrl);
   url.searchParams.set("brand", brandId);
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Loading brand products failed (${response.status} ${response.statusText}).`);
   }

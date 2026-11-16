@@ -1,10 +1,9 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Navbar } from "../components/Navbar/Navbar";
-import { NavbarSession } from "../components/NavbarSession/NavbarSession";
+import { NavbarSession, NavbarSessionFallback } from "../components/NavbarSession/NavbarSession";
 import { Footer } from "../components/Footer/Footer";
 
 const inter = Inter({
@@ -25,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={cn("h-full antialiased", inter.variable, "font-sans")}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <Suspense fallback={<Navbar />}>
+        <Suspense fallback={<NavbarSessionFallback />}>
           <NavbarSession />
         </Suspense>
         <div className="flex flex-1 flex-col">{children}</div>

@@ -1,10 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { RiLockLine, RiMailLine } from "@remixicon/react";
-import { signIn } from "@/src/app/account/login.api";
+import { signIn } from "next-auth/react";
+import { getNavbarState } from "@/src/components/NavbarSession/navbar.actions";
+import { announceNavbarState } from "@/src/components/Navbar/NavbarEvents";
 import {
   createZodResolver,
   loginSchema,
@@ -24,10 +26,30 @@ export function LoginForm() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError("");
     try {
-      await signIn(values);
-      router.push("/");
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Unable to sign in.");
+      const result = await signIn("credentials", {
+        redirect: false,
+        callbackUrl: "/",
+        email: values.email,
+        password: values.password,
+      });
+      if (!result?.ok || result.error) {
+        setSubmitError(
+          result?.error === "CredentialsSignin"
+            ? "The email or password is incorrect."
+            : "Unable to sign in right now. Please try again.",
+        );
+        return;
+      }
+      announceNavbarState({
+        userName: values.email,
+        isAuthenticated: true,
+        wishlistCount: 0,
+        cartCount: 0,
+      });
+      router.replace("/");
+      void getNavbarState().then(announceNavbarState).catch(() => undefined);
+    } catch {
+      setSubmitError("Unable to reach the sign-in service. Check your connection and try again.");
     }
   });
 
@@ -45,7 +67,7 @@ export function LoginForm() {
       </div>
       <label className="flex items-center gap-3 text-sm text-slate-600"><input type="checkbox" className="size-4 accent-[#16a34a]" />Keep me signed in</label>
       {submitError && <p role="alert" className="text-sm text-red-600">{submitError}</p>}
-      <button disabled={isSubmitting} type="submit" className="min-h-12 w-full rounded-lg bg-[#16a34a] px-4 text-base font-semibold text-white shadow-lg shadow-green-900/10 transition hover:bg-[#15803d] disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2">{isSubmitting ? "Signing inâ€¦" : "Sign In"}</button>
+      <button disabled={isSubmitting} aria-busy={isSubmitting} type="submit" className="min-h-12 w-full rounded-lg bg-[#16a34a] px-4 text-base font-semibold text-white shadow-lg shadow-green-900/10 transition hover:bg-[#15803d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a] focus-visible:ring-offset-2">Sign In<span className="sr-only">{isSubmitting ? " Signing in" : ""}</span></button>
     </form>
   );
 }

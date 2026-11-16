@@ -1,11 +1,12 @@
-﻿import { cookies } from "next/headers";
+import { cache } from "react";
+import { getAuthToken } from "@/src/next-Auth/getAuthToken";
 import type { WishlistResponse } from "./wishlist.interface";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL?.trim();
 
 async function wishlistRequest(method: "GET" | "POST" | "DELETE", productId?: string): Promise<WishlistResponse> {
   if (!BASE_URL) throw new Error("NEXT_PUBLIC_BASE_URL is not configured.");
-  const token = (await cookies()).get("token")?.value;
+  const token = await getAuthToken();
   if (!token) throw new Error("Please sign in to access your wishlist.");
   
   const url = productId && method === "DELETE"
@@ -26,8 +27,10 @@ async function wishlistRequest(method: "GET" | "POST" | "DELETE", productId?: st
   return data as WishlistResponse;
 }
 
+const readWishlist = cache(() => wishlistRequest("GET"));
+
 export function getWishlist(): Promise<WishlistResponse> {
-  return wishlistRequest("GET");
+  return readWishlist();
 }
 
 export function postWishlist(productId: string): Promise<WishlistResponse> {
