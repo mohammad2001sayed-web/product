@@ -44,8 +44,14 @@ async function ProductDetailsContent({ params }: ProductDetailsPageProps) {
   }
 
   const products = await getProductsPage(1).then((result) => result.data).catch(() => []);
+  const categoryId = product.category?._id;
+  const categorySlug = product.category?.slug;
   const recommendations = products
-    .filter((item) => (item.id || item._id) !== (product.id || product._id))
+    .filter((item) =>
+      (item.id || item._id) !== (product.id || product._id) &&
+      ((categoryId && item.category?._id === categoryId) ||
+        (categorySlug && item.category?.slug === categorySlug)),
+    )
     .slice(0, 5);
   const wishlist = await getWishlist().catch(() => null);
   const isFavorite = Boolean(wishlist?.data?.some((item) => (item.id || item._id) === (product.id || product._id)));

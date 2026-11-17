@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { setWishlistItem } from "@/src/app/wishlist/wishlist.actions";
 import { addProductToCart } from "@/src/app/cart/cart.actions";
 import type { Data } from "@/src/app/productDetails/productDetails.interface";
@@ -10,7 +11,10 @@ import type { Product } from "@/src/app/(home)/home.interface";
 import { getTotalCartQuantity } from "@/src/app/cart/cart.interface";
 import { ProductCard } from "@/src/components/ProductCard/ProductCard";
 import {
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiCheckLine,
+  RiFlashlightLine,
   RiHeartFill,
   RiHeartLine,
   RiHome4Line,
@@ -37,6 +41,9 @@ const productFeatures = [
 ];
 
 export function ProductDetails({ product, recommendations, initialFavorite = false }: Props) {
+  const router = useRouter();
+  const thumbnailTrack = useRef<HTMLDivElement>(null);
+  const recommendationsTrack = useRef<HTMLDivElement>(null);
   const photos = useMemo(
     () => Array.from(new Set([product.imageCover, ...(product.images ?? [])].filter(Boolean))),
     [product],
@@ -68,6 +75,49 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
     { id: "shipping", label: "Shipping & Returns" },
   ];
 
+  async function addSelectedQuantity() {
+    if (!available || cartPending) return false;
+    setCartPending(true);
+    setCartError("");
+    try {
+      let cart;
+      for (let index = 0; index < quantity; index += 1) {
+        cart = await addProductToCart(product.id || product._id);
+      }
+      if (cart) {
+        window.dispatchEvent(new CustomEvent("cart-count-change", { detail: getTotalCartQuantity(cart) }));
+      }
+      setAdded(true);
+      return true;
+    } catch (error) {
+      setCartError(error instanceof Error ? error.message : "Unable to add this product to your cart.");
+      return false;
+    } finally {
+      setCartPending(false);
+    }
+  }
+
+  function scrollRecommendations(direction: -1 | 1) {
+    recommendationsTrack.current?.scrollBy({
+      left: direction * recommendationsTrack.current.clientWidth * 0.8,
+      behavior: "smooth",
+    });
+  }
+
+  function handleTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    const currentIndex = tabs.findIndex((tab) => tab.id === activeTab);
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+    if (event.key === "ArrowLeft") nextIndex = (currentIndex + tabs.length - 1) % tabs.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = tabs.length - 1;
+    if (nextIndex !== null) {
+      event.preventDefault();
+      setActiveTab(tabs[nextIndex].id);
+      document.getElementById(`product-tab-${tabs[nextIndex].id}`)?.focus();
+    }
+  }
+
   function shareProduct() {
     if (navigator.share) {
       void navigator.share({ title: product.title, url: window.location.href });
@@ -87,21 +137,21 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
             <RiHome4Line aria-hidden="true" className="size-4" />
             Home
           </Link>
-          <span aria-hidden="true">â€º</span>
+          <span aria-hidden="true" className="text-slate-400">›</span>
           <Link href="/categories" className="shrink-0 hover:text-[#16a34a]">
             {product.category?.name || "Categories"}
           </Link>
-          <span aria-hidden="true">â€º</span>
-          <Link href="/categories" className="hidden shrink-0 hover:text-[#16a34a] sm:inline">
+          <span aria-hidden="true" className="text-slate-400">›</span>
+          <Link href="/categories" className="shrink-0 hover:text-[#16a34a]">
             {subcategory}
           </Link>
-          <span aria-hidden="true" className="hidden sm:inline">â€º</span>
-          <span className="truncate text-slate-700">{product.title}</span>
+          <span aria-hidden="true" className="text-slate-400">›</span>
+          <span className="min-w-0 truncate text-slate-800" title={product.title}>{product.title}</span>
         </nav>
 
-        <section className="grid items-start gap-5 lg:grid-cols-[minmax(230px,0.31fr)_minmax(0,1fr)] xl:gap-6">
-          <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
-            <div className="relative aspect-[3/4] overflow-hidden bg-[#f4f4f4]">
+        <section className="grid items-start gap-5 lg:grid-cols-[minmax(280px,0.34fr)_minmax(0,1fr)] xl:gap-7">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+            <div className="relative aspect-4/5 overflow-hidden rounded-lg bg-[#f4f4f4]">
               <Image
                 src={activeImage}
                 alt={product.title}
@@ -112,15 +162,15 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
                 className="object-contain"
               />
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
-              {photos.slice(0, 3).map((photo, index) => (
+            <div ref={thumbnailTrack} aria-label="Product images" className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-1 scrollbar-thin sm:gap-3">
+              {photos.map((photo, index) => (
                 <button
                   key={photo}
                   type="button"
                   aria-label={`View product photo ${index + 1}`}
                   aria-pressed={activeImage === photo}
                   onClick={() => setActiveImage(photo)}
-                  className={`relative aspect-[3/4] overflow-hidden border-2 bg-[#f4f4f4] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168247] ${
+                  className={`relative aspect-3/4 w-[35%] shrink-0 snap-start overflow-hidden rounded-md border-2 bg-[#f4f4f4] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168247] sm:w-[34%] ${
                     activeImage === photo ? "border-[#3182ce]" : "border-transparent"
                   }`}
                 >
@@ -137,7 +187,7 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 lg:p-7">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7 lg:p-9">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-[#eaf7ef] px-3 py-1 text-[11px] font-medium text-[#168247]">
                 {product.category?.name || "FreshCart"}
@@ -147,7 +197,7 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
               </span>
             </div>
 
-            <h1 className="mt-3 text-xl font-bold leading-tight text-[#121c2a] sm:text-2xl lg:text-[28px]">
+            <h1 className="mt-4 text-2xl font-bold leading-tight text-[#111827] sm:text-3xl lg:text-[38px]">
               {product.title}
             </h1>
 
@@ -155,9 +205,9 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
               <span className="flex items-center gap-0.5 text-amber-400" aria-label={`${rating} out of 5 stars`}>
                 {Array.from({ length: 5 }, (_, index) =>
                   index < Math.round(rating) ? (
-                    <RiStarFill key={index} aria-hidden="true" className="size-4 sm:size-[18px]" />
+                    <RiStarFill key={index} aria-hidden="true" className="size-4 sm:size-4.5" />
                   ) : (
-                    <RiStarLine key={index} aria-hidden="true" className="size-4 sm:size-[18px]" />
+                    <RiStarLine key={index} aria-hidden="true" className="size-4 sm:size-4.5" />
                   ),
                 )}
               </span>
@@ -167,8 +217,8 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
               {product.sold > 0 ? <span className="text-slate-500">Â· {product.sold}+ sold</span> : null}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
-              <strong className="text-2xl font-bold tracking-tight text-[#111827] sm:text-[28px]">
+            <div className="mt-5 flex flex-wrap items-center gap-2.5 sm:gap-3">
+              <strong className="text-3xl font-bold tracking-tight text-[#111827] sm:text-[40px]">
                 {money(price)}
               </strong>
               {discounted ? (
@@ -188,26 +238,26 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
               {available ? "In Stock" : "Out of Stock"}
             </div>
 
-            <p className="mt-4 border-b border-slate-100 pb-4 text-sm leading-6 text-slate-600">
+            <p className="mt-5 border-t border-slate-100 pt-5 text-sm leading-7 text-slate-600 sm:text-base">
               {product.description}
             </p>
 
             <div className="mt-4">
-              <label className="text-xs font-medium text-slate-600" htmlFor="product-quantity">
+              <label className="text-sm font-medium text-slate-700" htmlFor="product-quantity">
                 Quantity
               </label>
               <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                <div className="inline-flex h-10 items-center overflow-hidden rounded-lg border border-slate-200">
+                <div className="inline-flex h-12 items-center overflow-hidden rounded-lg border border-slate-200">
                   <button
                     type="button"
                     aria-label="Decrease quantity"
                     disabled={quantity <= 1}
                     onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-                    className="h-full w-11 text-lg text-slate-500 hover:bg-slate-50 disabled:text-slate-300"
+                    className="h-full w-12 text-lg text-slate-500 hover:bg-slate-50 disabled:text-slate-300"
                   >
-                    âˆ’
+                    <span aria-hidden="true">−</span>
                   </button>
-                  <span id="product-quantity" className="min-w-10 text-center text-sm font-medium">
+                  <span id="product-quantity" aria-live="polite" className="min-w-10 text-center text-sm font-medium">
                     {quantity}
                   </span>
                   <button
@@ -215,7 +265,7 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
                     aria-label="Increase quantity"
                     disabled={quantity >= available}
                     onClick={() => setQuantity((value) => Math.min(available, value + 1))}
-                    className="h-full w-11 text-lg text-slate-600 hover:bg-slate-50 disabled:text-slate-300"
+                    className="h-full w-12 text-lg text-slate-600 hover:bg-slate-50 disabled:text-slate-300"
                   >
                     +
                   </button>
@@ -236,30 +286,20 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
                 type="button"
                 disabled={!available || cartPending}
                 aria-busy={cartPending}
-                onClick={async () => {
-                  setCartPending(true);
-                  setCartError("");
-                  try {
-                    const cart = await addProductToCart(product.id || product._id);
-                    setAdded(true);
-                    window.dispatchEvent(new CustomEvent("cart-count-change", { detail: getTotalCartQuantity(cart) }));
-                  } catch (error) {
-                    setCartError(error instanceof Error ? error.message : "Unable to add this product to your cart.");
-                  } finally {
-                    setCartPending(false);
-                  }
-                }}
+                onClick={() => void addSelectedQuantity()}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#16a34a] px-4 text-sm font-semibold text-white shadow-md shadow-green-800/15 transition-colors hover:bg-[#128c3f] disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 {added ? <RiCheckLine aria-hidden="true" className="size-4" /> : <RiShoppingCartLine aria-hidden="true" className="size-4" />}
                 {cartPending ? "Adding…" : added ? "Added to Cart" : "Add to Cart"}
               </button>
-              <Link
-                href="/cart"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#111827] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#253145]"
+              <button
+                type="button"
+                disabled={!available || cartPending}
+                onClick={async () => { if (await addSelectedQuantity()) router.push("/cart"); }}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#111827] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#253145] disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                <span aria-hidden="true">ÏŸ</span> Buy Now
-              </Link>
+                <RiFlashlightLine aria-hidden="true" className="size-4" /> Buy Now
+              </button>
             </div>
             {cartError ? <p role="status" className="mt-2 text-xs text-rose-600">{cartError}</p> : null}
 
@@ -324,9 +364,13 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
             {tabs.map((item) => (
               <button
                 key={item.id}
+                id={`product-tab-${item.id}`}
                 type="button"
                 role="tab"
                 aria-selected={activeTab === item.id}
+                aria-controls="product-tab-panel"
+                tabIndex={activeTab === item.id ? 0 : -1}
+                onKeyDown={handleTabKeyDown}
                 onClick={() => setActiveTab(item.id)}
                 className={`inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-xs font-medium sm:px-5 sm:text-sm ${activeTab === item.id ? "border-[#16a34a] bg-[#f2fbf5] text-[#16a34a]" : "border-transparent text-slate-600 hover:bg-slate-50"}`}
               >
@@ -338,7 +382,7 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
             ))}
           </div>
 
-          <div role="tabpanel" className="p-4 sm:p-6">
+          <div id="product-tab-panel" role="tabpanel" aria-labelledby={`product-tab-${activeTab}`} className="p-4 sm:p-6">
             {activeTab === "details" ? (
               <>
                 <h2 className="text-base font-semibold text-[#18251e]">About this Product</h2>
@@ -412,18 +456,21 @@ export function ProductDetails({ product, recommendations, initialFavorite = fal
         </section>
 
         {recommendations.length > 0 ? (
-          <section className="mt-10 sm:mt-12">
+          <section className="mt-10 sm:mt-12" aria-label="You may also like">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="border-l-4 border-[#16a34a] pl-3 text-lg font-bold text-[#121c2a] sm:text-2xl">
                 You May Also <span className="text-[#16a34a]">Like</span>
               </h2>
-              <Link href="/shop" className="text-xs font-semibold text-[#168247] hover:underline sm:text-sm">
-                View all
-              </Link>
+              <div className="flex items-center gap-2">
+                <button type="button" aria-label="Scroll recommendations backward" onClick={() => scrollRecommendations(-1)} className="flex size-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-[#eaf7ef] hover:text-[#16a34a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a]"><RiArrowLeftSLine aria-hidden="true" className="size-6" /></button>
+                <button type="button" aria-label="Scroll recommendations forward" onClick={() => scrollRecommendations(1)} className="flex size-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-[#eaf7ef] hover:text-[#16a34a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a]"><RiArrowRightSLine aria-hidden="true" className="size-6" /></button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-              {recommendations.slice(0, 5).map((item) => (
-                <ProductCard key={item.id || item._id} product={item} />
+            <div ref={recommendationsTrack} aria-label="Recommended products" className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-3 scrollbar-thin sm:gap-5">
+              {recommendations.map((item) => (
+                <div key={item.id || item._id} className="w-[72%] shrink-0 snap-start min-[480px]:w-[48%] sm:w-[32%] lg:w-[23%]">
+                  <ProductCard product={item} />
+                </div>
               ))}
             </div>
           </section>
