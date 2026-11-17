@@ -3,9 +3,13 @@
 import { addCartProduct, applyCartCoupon as sendCartCoupon, clearCart, getCart, removeCartProduct, updateCartProduct } from "./cart.api";
 import type { cartResponse } from "./cart.interface";
 
+import { revalidatePath, refresh } from "next/cache";
+
 async function resolveMutationCart(result: cartResponse): Promise<cartResponse> {
-  if (result?.data && Array.isArray(result.data.products)) return result;
-  return getCart();
+  const cart = result?.data && Array.isArray(result.data.products) ? result : await getCart();
+  revalidatePath("/cart");
+  refresh();
+  return cart;
 }
 
 export async function addProductToCart(productId: string): Promise<cartResponse> {
