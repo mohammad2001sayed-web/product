@@ -143,7 +143,7 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
     await logout();
     announceNavbarState({ userName: "", isAuthenticated: false, wishlistCount: 0, cartCount: 0 });
     closeMenu();
-    router.replace("/");
+    router.replace("/account");
   }
 
   return (
