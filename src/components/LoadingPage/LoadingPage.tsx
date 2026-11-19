@@ -43,7 +43,7 @@ export function LoadingPage() {
           />
           <span
             aria-hidden="true"
-            className="fc-loading-ring-reverse absolute inset-2 rounded-full border-[2px] border-transparent border-b-[#4ade80]/80"
+            className="fc-loading-ring-reverse absolute inset-2 rounded-full border-2 border-transparent border-b-[#4ade80]/80"
           />
           <span className="fc-loading-pulse flex size-16 items-center justify-center rounded-full bg-[#16a34a] text-white shadow-[0_12px_32px_-8px_rgba(22,163,74,0.55)] sm:size-20">
             <RiShoppingCartLine aria-hidden="true" className="size-7 sm:size-8" />
