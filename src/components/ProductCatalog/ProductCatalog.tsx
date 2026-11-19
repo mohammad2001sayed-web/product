@@ -11,9 +11,11 @@ type ProductCatalogProps = {
   brandId?: string;
   page?: number;
   preview?: boolean;
+  category?: string;
+  keyword?: string;
 };
 
-export async function ProductCatalog({ title, brandId, page = 1, preview = false }: ProductCatalogProps) {
+export async function ProductCatalog({ title, brandId, page = 1, preview = false, category, keyword }: ProductCatalogProps) {
   await io();
 
   const resolvedTitle = title ?? (brandId ? "Brand Products" : preview ? "Popular Products" : "All Products");
@@ -26,13 +28,15 @@ export async function ProductCatalog({ title, brandId, page = 1, preview = false
     if (brandId) {
       products = await getProductsByBrand(brandId);
     } else {
-      const result = await getProductsPage(page);
+      const result = await getProductsPage(page, category, keyword);
       products = result.data;
       pageCount = Math.max(1, result.metadata?.numberOfPages ?? 1);
 
-      if (page > pageCount) {
+      if (page > pageCount && !keyword) {
         currentPage = pageCount;
-        products = (await getProductsPage(pageCount)).data;
+        products = (await getProductsPage(pageCount, category)).data;
+      } else if (keyword) {
+        currentPage = result.metadata?.currentPage ?? 1;
       }
     }
   } catch (error) {
@@ -59,6 +63,14 @@ export async function ProductCatalog({ title, brandId, page = 1, preview = false
     );
   }
 
+  const paginationHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (keyword) params.set("q", keyword);
+    params.set("page", String(targetPage));
+    return `/shop?${params.toString()}`;
+  };
+
   return (
     <>
       <FeaturedProducts
@@ -82,7 +94,7 @@ export async function ProductCatalog({ title, brandId, page = 1, preview = false
       ) : !brandId && pageCount > 1 ? (
         <nav aria-label="Product pages" className="mx-auto flex w-full max-w-360 items-center justify-center gap-5 px-4 pb-12 sm:px-6 lg:px-8">
           {currentPage > 1 ? (
-            <Link href={`/shop?page=${currentPage - 1}`} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#16a34a] hover:text-[#15803d]">
+            <Link href={paginationHref(currentPage - 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#16a34a] hover:text-[#15803d]">
               Previous
             </Link>
           ) : (
@@ -90,7 +102,7 @@ export async function ProductCatalog({ title, brandId, page = 1, preview = false
           )}
           <span className="text-sm text-slate-600">Page {currentPage} of {pageCount}</span>
           {currentPage < pageCount ? (
-            <Link href={`/shop?page=${currentPage + 1}`} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#16a34a] hover:text-[#15803d]">
+            <Link href={paginationHref(currentPage + 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#16a34a] hover:text-[#15803d]">
               Next
             </Link>
           ) : (

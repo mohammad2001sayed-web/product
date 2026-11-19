@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import freshCartLogo from "../../assets/imgi_1_freshcart-logo.49f1b44d.png";
 import { logout } from "@/src/app/account/logout.actions";
 import { announceNavbarState, NAVBAR_STATE_CHANGE, type NavbarSnapshot } from "./NavbarEvents";
@@ -29,23 +30,21 @@ const navigationLinks = [
   { label: "Brands", href: "/brands" },
 ];
 
-const categories = [
-  { label: "All Categories", href: "/categories" },
-  { label: "Electronics", href: "/categories?category=electronics" },
-  { label: "Women's Fashion", href: "/categories?category=womens-fashion" },
-  { label: "Men's Fashion", href: "/categories?category=mens-fashion" },
-  { label: "Beauty & Health", href: "/categories?category=beauty-health" },
-];
+const categoryLabels = ["Electronics", "Women's Fashion", "Men's Fashion", "Beauty & Health"];
 
 const mobileActionLinks = [
   { label: "Wishlist", href: "/wishlist", Icon: RiHeartLine },
   { label: "Cart", href: "/cart", Icon: RiShoppingCartLine },
 ];
 
-type NavbarProps = { userName?: string; wishlistCount?: number; cartCount?: number; isAuthenticated?: boolean };
+type NavbarProps = { userName?: string; wishlistCount?: number; cartCount?: number; isAuthenticated?: boolean; categoryLinks?: { label: string; href: string }[] };
 
-export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0, cartCount: initialCartCount = 0, isAuthenticated = Boolean(userName) }: NavbarProps = {}) {
+export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0, cartCount: initialCartCount = 0, isAuthenticated = Boolean(userName), categoryLinks = [] }: NavbarProps = {}) {
   const router = useRouter();
+  const categories = [
+    { label: "All Categories", href: "/categories" },
+    ...categoryLabels.map((label) => ({ label, href: categoryLinks.find((item) => item.label === label)?.href ?? "/shop" })),
+  ];
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [navbarState, setNavbarState] = useState<NavbarSnapshot>({
@@ -139,6 +138,14 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
     setCategoriesOpen(false);
   }
 
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    const query = new FormData(event.currentTarget).get("q");
+    if (typeof query !== "string" || !query.trim()) {
+      event.preventDefault();
+      router.push("/shop");
+    }
+  }
+
   async function handleLogout() {
     await logout();
     announceNavbarState({ userName: "", isAuthenticated: false, wishlistCount: 0, cartCount: 0 });
@@ -195,7 +202,7 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
             />
           </Link>
 
-          <form action="/" role="search" className="hidden min-w-0 max-w-2xl flex-1 lg:flex">
+          <form action="/shop" method="get" onSubmit={handleSearchSubmit} role="search" className="hidden min-w-0 max-w-2xl flex-1 lg:flex">
             <div className="relative w-full">
               <input
                 aria-label="Search products"
@@ -307,7 +314,7 @@ export function Navbar({ userName = "", wishlistCount: initialWishlistCount = 0,
             </button>
           </div>
 
-          <form action="/" role="search" className="mx-4 mt-4">
+          <form action="/shop" method="get" onSubmit={handleSearchSubmit} role="search" className="mx-4 mt-4">
             <div className="relative">
               <input aria-label="Search products" name="q" placeholder="Search products..." className="h-11 w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-4 pr-12 text-sm outline-none transition-all placeholder:text-gray-400 focus:border-[#16a34a] focus:bg-white focus:ring-2 focus:ring-[#16a34a]/20" />
               <button type="submit" aria-label="Search" className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#16a34a] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a]"><RiSearchLine aria-hidden="true" className="size-4" /></button>
