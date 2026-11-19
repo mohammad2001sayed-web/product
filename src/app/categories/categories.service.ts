@@ -5,16 +5,40 @@ export type NavbarCategoryLink = {
   href: string;
 };
 
-type ApiCategory = {
+export type Category = {
   _id: string;
   name: string;
+  slug: string;
+  image: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type CategoriesResponse = {
-  data?: ApiCategory[];
+  data?: Category[];
 };
 
 const categoryLabels = ["Electronics", "Women's Fashion", "Men's Fashion", "Beauty & Health"];
+
+export async function getCategories(): Promise<Category[]> {
+  "use cache";
+  cacheLife("hours");
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_BASE_URL is not configured.");
+
+  const response = await fetch(new URL("/api/v1/categories", baseUrl));
+  if (!response.ok) {
+    throw new Error(`Loading categories failed (${response.status} ${response.statusText}).`);
+  }
+
+  const categories = (await response.json()) as CategoriesResponse;
+  if (!Array.isArray(categories.data)) {
+    throw new Error("The categories API returned an invalid response.");
+  }
+
+  return categories.data;
+}
 
 export async function getNavbarCategoryLinks(): Promise<NavbarCategoryLink[]> {
   "use cache";
